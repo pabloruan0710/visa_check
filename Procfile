@@ -1,1 +1,1 @@
-worker: python3 visa.py 
+worker: python visa.py 
