@@ -37,7 +37,7 @@ PUSH_DEVICE =  os.environ.get("PUSHOVER_DEVICE") or config['PUSHOVER']['PUSH_DEV
 
 LOCAL_USE = eval(os.environ.get("LOCAL_USE")) or config['CHROMEDRIVER'].getboolean('LOCAL_USE')
 HUB_ADDRESS = "http://localhost:9515/wd/hub"
-HEROKU = eval(os.environ.get("HEROKU")) | config['CHROMEDRIVER'].getboolean('HEROKU')
+HEROKU = eval(os.environ.get("HEROKU")) or config['CHROMEDRIVER'].getboolean('HEROKU')
 
 REGEX_CONTINUE = "//a[contains(text(),'Continuar')]"
 
