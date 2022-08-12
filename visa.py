@@ -5,6 +5,7 @@ import json
 import random
 import platform
 import configparser
+import os
 from datetime import datetime
 
 import requests
@@ -32,13 +33,15 @@ FACILITY_ID = config['USVISA']['FACILITY_ID']
 SENDGRID_API_KEY = config['SENDGRID']['SENDGRID_API_KEY']
 PUSH_TOKEN = config['PUSHOVER']['PUSH_TOKEN']
 PUSH_USER = config['PUSHOVER']['PUSH_USER']
+PUSH_DEVICE = config['PUSHOVER']['PUSH_DEVICE']
 
 LOCAL_USE = config['CHROMEDRIVER'].getboolean('LOCAL_USE')
 HUB_ADDRESS = config['CHROMEDRIVER']['HUB_ADDRESS']
+HEROKU = config['CHROMEDRIVER'].getboolean('HEROKU')
 
 REGEX_CONTINUE = "//a[contains(text(),'Continuar')]"
 
-
+ENABLE_RESCHEDULE = False
 # def MY_CONDITION(month, day): return int(month) == 11 and int(day) >= 5
 def MY_CONDITION(month, day): return True # No custom condition wanted for the new scheduled date
 
@@ -76,16 +79,26 @@ def send_notification(msg):
         data = {
             "token": PUSH_TOKEN,
             "user": PUSH_USER,
+            "device": PUSH_DEVICE,
             "message": msg
         }
         requests.post(url, data)
 
 
 def get_driver():
+    chrome_options = webdriver.ChromeOptions()
+    if HEROKU:
+        chrome_options.binary_location = os.environ.get("GOOGLE_CHROME_BIN")
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--no-sandbox")
     if LOCAL_USE:
         dr = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     else:
-        dr = webdriver.Remote(command_executor=HUB_ADDRESS, options=webdriver.ChromeOptions())
+        dr = webdriver.Remote(command_executor=HUB_ADDRESS, options=chrome_options)
+    
+    if HEROKU:
+        dr = webdriver.Chrome(executable_path=os.environ.get("CHROMEDRIVER_PATH"), service=Service(ChromeDriverManager().install()), options=chrome_options)
     return dr
 
 driver = get_driver()
@@ -162,35 +175,41 @@ def get_time(date):
 
 def reschedule(date):
     global EXIT
-    print(f"Starting Reschedule ({date})")
-
+    
     time = get_time(date)
     driver.get(APPOINTMENT_URL)
 
-    data = {
-        "utf8": driver.find_element(by=By.NAME, value='utf8').get_attribute('value'),
-        "authenticity_token": driver.find_element(by=By.NAME, value='authenticity_token').get_attribute('value'),
-        "confirmed_limit_message": driver.find_element(by=By.NAME, value='confirmed_limit_message').get_attribute('value'),
-        "use_consulate_appointment_capacity": driver.find_element(by=By.NAME, value='use_consulate_appointment_capacity').get_attribute('value'),
-        "appointments[consulate_appointment][facility_id]": FACILITY_ID,
-        "appointments[consulate_appointment][date]": date,
-        "appointments[consulate_appointment][time]": time,
-    }
+    if ENABLE_RESCHEDULE:
+        print(f"Starting Reschedule ({date})")
+        data = {
+            "utf8": driver.find_element(by=By.NAME, value='utf8').get_attribute('value'),
+            "authenticity_token": driver.find_element(by=By.NAME, value='authenticity_token').get_attribute('value'),
+            "confirmed_limit_message": driver.find_element(by=By.NAME, value='confirmed_limit_message').get_attribute('value'),
+            "use_consulate_appointment_capacity": driver.find_element(by=By.NAME, value='use_consulate_appointment_capacity').get_attribute('value'),
+            "appointments[consulate_appointment][facility_id]": FACILITY_ID,
+            "appointments[consulate_appointment][date]": date,
+            "appointments[consulate_appointment][time]": time,
+        }
 
-    headers = {
-        "User-Agent": driver.execute_script("return navigator.userAgent;"),
-        "Referer": APPOINTMENT_URL,
-        "Cookie": "_yatri_session=" + driver.get_cookie("_yatri_session")["value"]
-    }
+        headers = {
+            "User-Agent": driver.execute_script("return navigator.userAgent;"),
+            "Referer": APPOINTMENT_URL,
+            "Cookie": "_yatri_session=" + driver.get_cookie("_yatri_session")["value"]
+        }
 
-    r = requests.post(APPOINTMENT_URL, headers=headers, data=data)
-    if(r.text.find('Successfully Scheduled') != -1):
-        msg = f"Rescheduled Successfully! {date} {time}"
+        r = requests.post(APPOINTMENT_URL, headers=headers, data=data)
+    
+        if(r.text.find('Successfully Scheduled') != -1):
+            msg = f"Reagendamento realizado! {date} {time}"
+            send_notification(msg)
+            EXIT = True
+        else:
+            msg = f"Falha ao reagendar. {date} {time}"
+            send_notification(msg)
+    else:
+        msg = f"{FACILITY_ID} - Nova data disponível! {date} {time}"
         send_notification(msg)
         EXIT = True
-    else:
-        msg = f"Reschedule Failed. {date} {time}"
-        send_notification(msg)
 
 
 def is_logged_in():
@@ -201,7 +220,7 @@ def is_logged_in():
 
 
 def print_dates(dates):
-    print("Available dates:")
+    print("Datas disponíveis:")
     for d in dates:
         print("%s \t business_day: %s" % (d.get('date'), d.get('business_day')))
     print()
@@ -220,7 +239,7 @@ def get_available_date(dates):
         print(f'Is {my_date} > {new_date}:\t{result}')
         return result
 
-    print("Checking for an earlier date:")
+    print("Verificando uma data anterior:")
     for d in dates:
         date = d.get('date')
         if is_earlier(date) and date != last_seen:
@@ -231,7 +250,7 @@ def get_available_date(dates):
 
 
 def push_notification(dates):
-    msg = "date: "
+    msg = "data: "
     for d in dates:
         msg = msg + d.get('date') + '; '
     send_notification(msg)
@@ -246,29 +265,27 @@ if __name__ == "__main__":
         try:
             print("------------------")
             print(datetime.today())
-            print(f"Retry count: {retry_count}")
+            print(f"Contagem de tentativas: {retry_count}")
             print()
 
             dates = get_date()[:5]
             if not dates:
-              msg = "List is empty"
-              send_notification(msg)
+              msg = "Lista vazia"
               EXIT = True
             print_dates(dates)
             date = get_available_date(dates)
             print()
-            print(f"New date: {date}")
+            print(f"Nova data: {date}")
             if date:
                 reschedule(date)
-                push_notification(dates)
 
             if(EXIT):
                 print("------------------exit")
                 break
 
             if not dates:
-              msg = "List is empty"
-              send_notification(msg)
+              msg = "Lista vazia"
+              print(f"{msg}")
               #EXIT = True
               time.sleep(COOLDOWN_TIME)
             else:
