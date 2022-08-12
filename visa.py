@@ -57,7 +57,7 @@ EXIT = False
 
 
 def send_notification(msg):
-    print(f"Sending notification: {msg}")
+    print(f"Sending notification: {msg} token: {PUSH_TOKEN} - {PUSH_USER}")
 
     if SENDGRID_API_KEY:
         message = Mail(
