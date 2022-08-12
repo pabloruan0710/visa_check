@@ -23,19 +23,19 @@ from sendgrid.helpers.mail import Mail
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-USERNAME = config['USVISA']['USERNAME']
-PASSWORD = config['USVISA']['PASSWORD']
-SCHEDULE_ID = config['USVISA']['SCHEDULE_ID']
-MY_SCHEDULE_DATE = config['USVISA']['MY_SCHEDULE_DATE']
-COUNTRY_CODE = config['USVISA']['COUNTRY_CODE'] 
-FACILITY_ID = config['USVISA']['FACILITY_ID']
+USERNAME = config['USVISA']['USERNAME'] | os.environ.get("USVISA_USERNAME")
+PASSWORD = config['USVISA']['PASSWORD'] | os.environ.get("USVISA_PASS")
+SCHEDULE_ID = config['USVISA']['SCHEDULE_ID'] | os.environ.get("USVISA_SCHEDULE_ID")
+MY_SCHEDULE_DATE = config['USVISA']['MY_SCHEDULE_DATE'] | os.environ.get("USVISA_MY_SCHEDULE_DATE")
+COUNTRY_CODE = config['USVISA']['COUNTRY_CODE'] | os.environ.get("USVISA_COUNTRY_CODE")
+FACILITY_ID = config['USVISA']['FACILITY_ID'] | os.environ.get("USVISA_CONSULATE_ID")
 
 SENDGRID_API_KEY = config['SENDGRID']['SENDGRID_API_KEY']
-PUSH_TOKEN = config['PUSHOVER']['PUSH_TOKEN']
-PUSH_USER = config['PUSHOVER']['PUSH_USER']
-PUSH_DEVICE = config['PUSHOVER']['PUSH_DEVICE']
+PUSH_TOKEN = config['PUSHOVER']['PUSH_TOKEN'] | os.environ.get("PUSHOVER_TOKEN")
+PUSH_USER = config['PUSHOVER']['PUSH_USER'] | os.environ.get("PUSHOVER_USER")
+PUSH_DEVICE = config['PUSHOVER']['PUSH_DEVICE'] | os.environ.get("PUSHOVER_DEVICE")
 
-LOCAL_USE = config['CHROMEDRIVER'].getboolean('LOCAL_USE')
+LOCAL_USE = config['CHROMEDRIVER'].getboolean('LOCAL_USE') | eval(os.environ.get("LOCAL_USE"))
 HUB_ADDRESS = config['CHROMEDRIVER']['HUB_ADDRESS']
 HEROKU = config['CHROMEDRIVER'].getboolean('HEROKU')
 
