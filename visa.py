@@ -17,7 +17,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait as Wait
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
