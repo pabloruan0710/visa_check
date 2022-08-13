@@ -23,3 +23,7 @@ PUSH_USER = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 [SENDGRID]
 ; Get email notifications via https://sendgrid.com/ (optional)
 SENDGRID_API_KEY = 
+
+[TELEGRAM]
+ENABLE = True
+BOT_TOKEN = 

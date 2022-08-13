@@ -7,6 +7,8 @@ import platform
 import configparser
 import os
 from datetime import datetime
+from random import randrange
+import logging
 
 import requests
 from selenium import webdriver
@@ -15,10 +17,16 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait as Wait
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
+# Enable logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger(__name__)
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -30,23 +38,27 @@ MY_SCHEDULE_DATE = os.environ.get("USVISA_MY_SCHEDULE_DATE") or config['USVISA']
 COUNTRY_CODE = os.environ.get("USVISA_COUNTRY_CODE") or config['USVISA']['COUNTRY_CODE']
 FACILITY_ID = os.environ.get("USVISA_CONSULATE_ID") or config['USVISA']['FACILITY_ID']
 
-SENDGRID_API_KEY = True
+SENDGRID_API_KEY = False
 PUSH_TOKEN = os.environ.get("PUSHOVER_TOKEN") or config['PUSHOVER']['PUSH_TOKEN']
 PUSH_USER = os.environ.get("PUSHOVER_USER") or config['PUSHOVER']['PUSH_USER']
-PUSH_DEVICE =  os.environ.get("PUSHOVER_DEVICE") or config['PUSHOVER']['PUSH_DEVICE']
+PUSH_DEVICE = os.environ.get("PUSHOVER_DEVICE") or config['PUSHOVER']['PUSH_DEVICE']
 
-LOCAL_USE = eval(os.environ.get("LOCAL_USE")) or config['CHROMEDRIVER'].getboolean('LOCAL_USE')
+LOCAL_USE = eval(os.environ.get("LOCAL_USE") or 'False') or config['CHROMEDRIVER'].getboolean('LOCAL_USE')
 HUB_ADDRESS = "http://localhost:9515/wd/hub"
-HEROKU = eval(os.environ.get("HEROKU")) or config['CHROMEDRIVER'].getboolean('HEROKU')
+HEROKU = eval(os.environ.get("HEROKU") or 'False') or config['CHROMEDRIVER'].getboolean('HEROKU')
 
 REGEX_CONTINUE = "//a[contains(text(),'Continuar')]"
 
 ENABLE_RESCHEDULE = False
+TELEGRAM_ENABLE = eval(os.environ.get("TELEGRAM_ENABLE") or 'True') or config['TELEGRAM'].getboolean('ENABLE')
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or config['TELEGRAM']['BOT_TOKEN']
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID") or config['TELEGRAM']['CHAT_ID']
+
 # def MY_CONDITION(month, day): return int(month) == 11 and int(day) >= 5
 def MY_CONDITION(month, day): return True # No custom condition wanted for the new scheduled date
 
 STEP_TIME = 0.5  # time between steps (interactions with forms): 0.5 seconds
-RETRY_TIME = 60*10  # wait time between retries/checks for available dates: 10 minutes
+RETRY_TIME = 60*random.randint(10, 16)  # wait time between retries/checks for available dates: 10 minutes
 EXCEPTION_TIME = 60*30  # wait time when an exception occurs: 30 minutes
 COOLDOWN_TIME = 60*60  # wait time when temporary banned (empty list): 60 minutes
 
@@ -57,7 +69,7 @@ EXIT = False
 
 
 def send_notification(msg):
-    print(f"Sending notification: {msg} token: {PUSH_TOKEN} - {PUSH_USER}")
+    print(f"Sending notification: {msg} token: {PUSH_TOKEN} - {PUSH_USER} - {PUSH_DEVICE}")
 
     if SENDGRID_API_KEY:
         message = Mail(
@@ -82,8 +94,14 @@ def send_notification(msg):
             "device": PUSH_DEVICE,
             "message": msg
         }
-        requests.post(url, data)
+        try:
+            requests.post(url, data)
+        except Exception as e:
+            print(e.message)
 
+    if TELEGRAM_ENABLE:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text={msg}"
+        requests.get(url)
 
 def get_driver():
     chrome_options = webdriver.ChromeOptions()
@@ -255,7 +273,6 @@ def push_notification(dates):
         msg = msg + d.get('date') + '; '
     send_notification(msg)
 
-
 if __name__ == "__main__":
     login()
     retry_count = 0
@@ -270,8 +287,8 @@ if __name__ == "__main__":
 
             dates = get_date()[:5]
             if not dates:
-              msg = "Lista vazia"
-              EXIT = True
+                msg = "Lista vazia"
+                EXIT = True
             print_dates(dates)
             date = get_available_date(dates)
             print()
@@ -284,12 +301,13 @@ if __name__ == "__main__":
                 break
 
             if not dates:
-              msg = "Lista vazia"
-              print(f"{msg}")
-              #EXIT = True
-              time.sleep(COOLDOWN_TIME)
+                msg = "Lista vazia"
+                print(f"{msg}")
+                #EXIT = True
+                time.sleep(COOLDOWN_TIME)
             else:
-              time.sleep(RETRY_TIME)
+                RETRY_TIME = 60*random.randint(10, 16) 
+                time.sleep(RETRY_TIME)
 
         except:
             retry_count += 1
