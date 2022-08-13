@@ -48,7 +48,7 @@ HEROKU = eval(os.environ.get("HEROKU") or 'False') or config['CHROMEDRIVER'].get
 
 REGEX_CONTINUE = "//a[contains(text(),'Continuar')]"
 
-ENABLE_RESCHEDULE = False
+ENABLE_RESCHEDULE = eval(os.environ.get("ENABLE_RESCHEDULE") or 'False') or False
 TELEGRAM_ENABLE = eval(os.environ.get("TELEGRAM_ENABLE") or 'True') or config['TELEGRAM'].getboolean('ENABLE')
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or config['TELEGRAM']['BOT_TOKEN']
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID") or config['TELEGRAM']['CHAT_ID']
