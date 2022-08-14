@@ -6,7 +6,7 @@ import random
 import platform
 import configparser
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from random import randrange
 import logging
 
@@ -34,8 +34,10 @@ USERNAME = os.environ.get("USVISA_USERNAME") or config['USVISA']['USERNAME']
 PASSWORD = os.environ.get("USVISA_PASS") or config['USVISA']['PASSWORD']
 SCHEDULE_ID = os.environ.get("USVISA_SCHEDULE_ID") or config['USVISA']['SCHEDULE_ID']
 MY_SCHEDULE_DATE = os.environ.get("USVISA_MY_SCHEDULE_DATE") or config['USVISA']['MY_SCHEDULE_DATE']
+DAYS_FOR_ORGANIZE = os.environ.get("USVISA_DAYS_FOR_ORGANIZE") or config['USVISA']['DAYS_FOR_ORGANIZE']
 COUNTRY_CODE = os.environ.get("USVISA_COUNTRY_CODE") or config['USVISA']['COUNTRY_CODE']
 FACILITY_ID = os.environ.get("USVISA_CONSULATE_ID") or config['USVISA']['FACILITY_ID']
+CASV_ID = os.environ.get("USVISA_CASV_ID") or config['USVISA']['CASV_ID']
 
 SENDGRID_API_KEY = False
 PUSH_TOKEN = os.environ.get("PUSHOVER_TOKEN") or config['PUSHOVER']['PUSH_TOKEN']
@@ -48,7 +50,7 @@ HEROKU = eval(os.environ.get("HEROKU") or 'False') or config['CHROMEDRIVER'].get
 
 REGEX_CONTINUE = "//a[contains(text(),'Continuar')]"
 
-ENABLE_RESCHEDULE = eval(os.environ.get("ENABLE_RESCHEDULE") or 'False') or False
+ENABLE_RESCHEDULE = eval(os.environ.get("ENABLE_RESCHEDULE") or 'False') or True
 TELEGRAM_ENABLE = eval(os.environ.get("TELEGRAM_ENABLE") or 'True') or config['TELEGRAM'].getboolean('ENABLE')
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or config['TELEGRAM']['BOT_TOKEN']
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID") or config['TELEGRAM']['CHAT_ID']
@@ -63,6 +65,9 @@ COOLDOWN_TIME = 60*60  # wait time when temporary banned (empty list): 60 minute
 
 DATE_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/days/{FACILITY_ID}.json?appointments[expedite]=false"
 TIME_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/times/{FACILITY_ID}.json?date=%s&appointments[expedite]=false"
+CASV_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/days/{CASV_ID}.json?&consulate_id={FACILITY_ID}&consulate_date=%s&consulate_time=%s&appointments[expedite]=false"
+# first %s = date for list time, second %s date consulate, three %s time consulate
+CASV_TIME_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/times/{CASV_ID}.json?date=%s&consulate_id={FACILITY_ID}&consulate_date=%s&consulate_time=%s&appointments[expedite]=false"
 APPOINTMENT_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment"
 EXIT = False
 
@@ -189,11 +194,34 @@ def get_time(date):
     print(f"Got time successfully! {date} {time}")
     return time
 
+## CASV
+def get_date_casv(date_consulate, time_consulate):
+    url = CASV_URL % (date_consulate, time_consulate)
+    driver.get(url)
+    if not is_logged_in():
+        login()
+        return get_date_casv()
+    else:
+        content = driver.find_element(By.TAG_NAME, 'pre').text
+        date = json.loads(content)
+        return date
 
-def reschedule(date):
+def get_time_casv(dateListTime, date_consulate, time_consulate):
+    time_url = CASV_TIME_URL % (dateListTime, date_consulate, time_consulate)
+    driver.get(time_url)
+    content = driver.find_element(By.TAG_NAME, 'pre').text
+    data = json.loads(content)
+    time = data.get("available_times")[-1]
+    print(f"Got time successfully! {date} {time}")
+    return time
+
+
+def reschedule(dateConsulate, timeConsulate, dateCasv, timeCasv):
     global EXIT
-    
-    time = get_time(date)
+    date = dateConsulate
+    time = timeConsulate
+    dateCasv = dateCasv
+    timeCasv = timeCasv
     driver.get(APPOINTMENT_URL)
 
     if ENABLE_RESCHEDULE:
@@ -208,25 +236,41 @@ def reschedule(date):
             "appointments[consulate_appointment][time]": time,
         }
 
+        if CASV_ID and dateCasv and timeCasv:
+            data["appointments[asc_appointment][facility_id]"] = CASV_ID
+            data["appointments[asc_appointment][date]"] = dateCasv
+            data["appointments[asc_appointment][time]"] = timeCasv
+
         headers = {
             "User-Agent": driver.execute_script("return navigator.userAgent;"),
             "Referer": APPOINTMENT_URL,
             "Cookie": "_yatri_session=" + driver.get_cookie("_yatri_session")["value"]
         }
 
-        r = requests.post(APPOINTMENT_URL, headers=headers, data=data)
-    
-        if(r.text.find('Successfully Scheduled') != -1):
-            msg = f"Reagendamento realizado! {date} {time}"
+        if CASV_ID and (not dateCasv or not timeCasv):
+            msg = f"Data para consulado disponível, porém data não encontrada para CASV! {date} {time}"
             send_notification(msg)
-            EXIT = True
         else:
-            msg = f"Falha ao reagendar. {date} {time}"
-            send_notification(msg)
+            print(f"Realizando agendamento")
+            print(f"Consulado: {date} - {time}")
+            if CASV_ID:
+                print(f"CASV: {dateCasv} - {timeCasv}")
+
+            r = requests.post(APPOINTMENT_URL, headers=headers, data=data)
+            print("Retorno reagendamento!")
+            print(r)
+    
+            if(r.text.find('Você realizou o seu agendamento com sucesso') != -1):
+                msg = f"Reagendamento realizado! {date} {time}"
+                send_notification(msg)
+                EXIT = True
+            else:
+                msg = f"Falha ao reagendar. {date} {time}"
+                send_notification(msg)
     else:
         msg = f"{FACILITY_ID} - Nova data disponível! {date} {time}"
         send_notification(msg)
-        EXIT = True
+        #EXIT = True
 
 
 def is_logged_in():
@@ -246,24 +290,44 @@ def print_dates(dates):
 last_seen = None
 
 
-def get_available_date(dates):
+def get_available_date(dates, dateMax=MY_SCHEDULE_DATE, isCASV=False):
     global last_seen
 
     def is_earlier(date):
-        my_date = datetime.strptime(MY_SCHEDULE_DATE, "%Y-%m-%d")
+        my_date = datetime.strptime(dateMax, "%Y-%m-%d")
         new_date = datetime.strptime(date, "%Y-%m-%d")
-        result = my_date > new_date
-        print(f'Is {my_date} > {new_date}:\t{result}')
-        return result
+        minimum_date = None
+        if DAYS_FOR_ORGANIZE:
+            minimum_date_d = datetime.today() - timedelta(days=int(DAYS_FOR_ORGANIZE))
+            minimum_date = datetime.strptime(minimum_date_d, "%Y-%m-%d")
+        if isCASV:
+            if minimum_date:
+                result = my_date >= new_date and new_date >= minimum_date
+                print(f'Is {my_date} >= {new_date} and {new_date} >= {minimum_date}:\t{result}')
+            else:
+                result = my_date >= new_date
+                print(f'Is CASV {my_date} >= {new_date}:\t{result}')
+            return result
+        else:
+            if minimum_date:
+                result = my_date > new_date and new_date >= minimum_date
+                print(f'Is {my_date} > {new_date} and {new_date} >= {minimum_date}:\t{result}')
+            else:
+                result = my_date > new_date
+                print(f'Is CASV {my_date} >= {new_date}:\t{result}')
+            return result
 
     print("Verificando uma data anterior:")
     for d in dates:
         date = d.get('date')
-        if is_earlier(date) and date != last_seen:
-            _, month, day = date.split('-')
-            if(MY_CONDITION(month, day)):
-                last_seen = date
-                return date
+        if isCASV and is_earlier(date):
+            return date
+        else:
+            if is_earlier(date) and date != last_seen:
+                _, month, day = date.split('-')
+                if(MY_CONDITION(month, day)):
+                    last_seen = date
+                    return date
 
 
 def push_notification(dates):
@@ -293,7 +357,29 @@ if __name__ == "__main__":
             print()
             print(f"Nova data: {date}")
             if date:
-                reschedule(date)
+                timeConsulate = get_time(date)
+                if CASV_ID and timeConsulate:
+                    print()
+                    print(f"Consultando nova data para CASV com consulado em: {date} - {timeConsulate}")
+                    casvDates = get_date_casv(date, timeConsulate)[:5]
+                    if not casvDates:
+                        msg = "Lista CASV vazia"
+                        # EXIT = True
+                    print_dates(casvDates)
+                    casvDate = get_available_date(dates, dateMax=date, isCASV=True)
+                    print()
+                    if casvDate:
+                        print(f"Nova data CASV: {casvDate}")
+                        timeCasv = get_time_casv(casvDate, date, timeConsulate)
+                    else:
+                        print(f"Data não disponível para CASV")
+                    
+                    if casvDate and timeCasv:
+                        reschedule(date, timeConsulate, casvDate, timeCasv)
+                    else:
+                        reschedule(date, timeConsulate, None, None)
+                else:
+                    reschedule(date, timeConsulate, None, None)
 
             if(EXIT):
                 print("------------------exit")
