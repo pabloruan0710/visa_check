@@ -35,6 +35,7 @@ PASSWORD = os.environ.get("USVISA_PASS") or config['USVISA']['PASSWORD']
 SCHEDULE_ID = os.environ.get("USVISA_SCHEDULE_ID") or config['USVISA']['SCHEDULE_ID']
 MY_SCHEDULE_DATE = os.environ.get("USVISA_MY_SCHEDULE_DATE") or config['USVISA']['MY_SCHEDULE_DATE']
 DAYS_FOR_ORGANIZE = os.environ.get("USVISA_DAYS_FOR_ORGANIZE") or config['USVISA']['DAYS_FOR_ORGANIZE']
+CASV_HOUR_DELAY = os.environ.get("USVISA_CASV_HOUR_DELAY") or int(config['USVISA']['CASV_HOUR_DELAY'] or 0) #quantidade em horas para chegar ao casv
 COUNTRY_CODE = os.environ.get("USVISA_COUNTRY_CODE") or config['USVISA']['COUNTRY_CODE']
 FACILITY_ID = os.environ.get("USVISA_CONSULATE_ID") or config['USVISA']['FACILITY_ID']
 CASV_ID = os.environ.get("USVISA_CASV_ID") or config['USVISA']['CASV_ID']
@@ -190,7 +191,7 @@ def get_time(date):
     driver.get(time_url)
     content = driver.find_element(By.TAG_NAME, 'pre').text
     data = json.loads(content)
-    time = data.get("available_times")[-1]
+    time = data.get("available_times")[0]
     print(f"Got time successfully! {date} {time}")
     return time
 
@@ -207,13 +208,22 @@ def get_date_casv(date_consulate, time_consulate):
         return date
 
 def get_time_casv(dateListTime, date_consulate, time_consulate):
+
+    def get_time_delay(time):
+        consulateTime = datetime.strptime(time_consulate, "%H:%M") + timedelta(hours=CASV_HOUR_DELAY)
+        newTime = datetime.strptime(time, "%H:%M")
+        print(f"Checando hora do CASV: {newTime} < Consulado: {consulateTime}")
+        return newTime < consulateTime
+
     time_url = CASV_TIME_URL % (dateListTime, date_consulate, time_consulate)
     driver.get(time_url)
     content = driver.find_element(By.TAG_NAME, 'pre').text
     data = json.loads(content)
-    time = data.get("available_times")[-1]
-    print(f"Got time successfully! {date} {time}")
-    return time
+    times = reversed(data.get("available_times"))
+    for time in times:
+        if get_time_delay(time) == True:
+            print(f"Got time successfully! {date} {time}")
+            return time
 
 
 def reschedule(dateConsulate, timeConsulate, dateCasv, timeCasv):
@@ -298,14 +308,14 @@ def get_available_date(dates, dateMax=MY_SCHEDULE_DATE, isCASV=False):
         new_date = datetime.strptime(date, "%Y-%m-%d")
         minimum_date = None
         if DAYS_FOR_ORGANIZE:
-            minimum_date_d = (datetime.today() - timedelta(days=int(DAYS_FOR_ORGANIZE))).strftime("%Y-%m-%d")
+            minimum_date_d = (datetime.today() + timedelta(days=int(DAYS_FOR_ORGANIZE))).strftime("%Y-%m-%d")
             minimum_date = datetime.strptime(minimum_date_d, "%Y-%m-%d")
         if isCASV:
             if minimum_date:
                 result = my_date >= new_date and new_date >= minimum_date
-                print(f'Is {my_date} >= {new_date} and {new_date} >= {minimum_date}:\t{result}')
+                print(f'Is CASV {my_date} >= {new_date} and {new_date} >= {minimum_date}:\t{result}')
             else:
-                result = my_date >= new_date
+                result = my_date > new_date
                 print(f'Is CASV {my_date} >= {new_date}:\t{result}')
             return result
         else:
@@ -314,7 +324,7 @@ def get_available_date(dates, dateMax=MY_SCHEDULE_DATE, isCASV=False):
                 print(f'Is {my_date} > {new_date} and {new_date} >= {minimum_date}:\t{result}')
             else:
                 result = my_date > new_date
-                print(f'Is CASV {my_date} >= {new_date}:\t{result}')
+                print(f'Is {my_date} >= {new_date}:\t{result}')
             return result
 
     print("Verificando uma data anterior:")
@@ -355,8 +365,8 @@ if __name__ == "__main__":
             print_dates(dates)
             date = get_available_date(dates)
             print()
-            print(f"Nova data: {date}")
             if date:
+                print(f"Nova data: {date}")
                 timeConsulate = get_time(date)
                 if CASV_ID and timeConsulate:
                     print()
@@ -391,9 +401,9 @@ if __name__ == "__main__":
                 #EXIT = True
                 time.sleep(COOLDOWN_TIME)
             else:
-                RETRY_TIME = 60*random.randint(10, 16) 
+                RETRY_TIME = 60*random.randint(9, 16) 
                 minutos = RETRY_TIME/60
-                print(f"Aguardando {minutos}min...")
+                print(f"Aguardando {minutos} min...")
                 time.sleep(RETRY_TIME)
 
         except:
