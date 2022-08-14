@@ -392,6 +392,8 @@ if __name__ == "__main__":
                 time.sleep(COOLDOWN_TIME)
             else:
                 RETRY_TIME = 60*random.randint(10, 16) 
+                minutos = RETRY_TIME/60
+                print(f"Aguardando {minutos}min...")
                 time.sleep(RETRY_TIME)
 
         except:
