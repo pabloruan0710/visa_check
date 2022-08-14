@@ -305,7 +305,6 @@ if __name__ == "__main__":
                 #EXIT = True
                 time.sleep(COOLDOWN_TIME)
             else:
-                RETRY_TIME = 60*random.randint(10, 16) 
                 time.sleep(RETRY_TIME)
 
         except:
