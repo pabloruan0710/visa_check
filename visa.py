@@ -263,7 +263,7 @@ def reschedule(dateConsulate, timeConsulate, dateCasv, timeCasv):
             if(r.text.find('Você realizou o seu agendamento com sucesso') != -1):
                 msg = f"Reagendamento realizado! {date} {time}"
                 send_notification(msg)
-                EXIT = True
+                #EXIT = True
             else:
                 msg = f"Falha ao reagendar. {date} {time}"
                 send_notification(msg)
@@ -298,7 +298,7 @@ def get_available_date(dates, dateMax=MY_SCHEDULE_DATE, isCASV=False):
         new_date = datetime.strptime(date, "%Y-%m-%d")
         minimum_date = None
         if DAYS_FOR_ORGANIZE:
-            minimum_date_d = datetime.today() - timedelta(days=int(DAYS_FOR_ORGANIZE))
+            minimum_date_d = (datetime.today() - timedelta(days=int(DAYS_FOR_ORGANIZE))).strftime("%Y-%m-%d")
             minimum_date = datetime.strptime(minimum_date_d, "%Y-%m-%d")
         if isCASV:
             if minimum_date:
