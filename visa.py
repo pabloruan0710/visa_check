@@ -191,7 +191,7 @@ def get_time(date):
     driver.get(time_url)
     content = driver.find_element(By.TAG_NAME, 'pre').text
     data = json.loads(content)
-    time = data.get("available_times")[0]
+    time = data.get("available_times")[-1]
     print(f"Got time successfully! {date} {time}")
     return time
 
@@ -208,7 +208,7 @@ def get_date_casv(date_consulate, time_consulate):
         return date
 
 def get_time_casv(dateListTime, date_consulate, time_consulate):
-
+    
     def get_time_delay(time):
         consulateTime = datetime.strptime(time_consulate, "%H:%M") + timedelta(hours=CASV_HOUR_DELAY)
         newTime = datetime.strptime(time, "%H:%M")
@@ -219,7 +219,11 @@ def get_time_casv(dateListTime, date_consulate, time_consulate):
     driver.get(time_url)
     content = driver.find_element(By.TAG_NAME, 'pre').text
     data = json.loads(content)
-    times = reversed(data.get("available_times"))
+    resultTimes = data.get("available_times")
+    times = reversed(resultTimes)
+    if dateListTime == date_consulate and len(times) > 0:
+        return resultTimes[-1]
+        
     for time in times:
         if get_time_delay(time) == True:
             print(f"Got time successfully! {date} {time}")
