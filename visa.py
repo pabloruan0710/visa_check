@@ -287,7 +287,7 @@ if __name__ == "__main__":
             dates = get_date()[:5]
             if not dates:
                 msg = "Lista vazia"
-                EXIT = True
+               # EXIT = True
             print_dates(dates)
             date = get_available_date(dates)
             print()
@@ -305,6 +305,7 @@ if __name__ == "__main__":
                 #EXIT = True
                 time.sleep(COOLDOWN_TIME)
             else:
+                RETRY_TIME = 60*random.randint(10, 16) 
                 time.sleep(RETRY_TIME)
 
         except:
