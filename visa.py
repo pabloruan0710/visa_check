@@ -277,7 +277,7 @@ def reschedule(dateConsulate, timeConsulate, dateCasv, timeCasv):
             if(r.text.find('Você realizou o seu agendamento com sucesso') != -1):
                 msg = f"Reagendamento realizado! {date} {time}"
                 send_notification(msg)
-                #EXIT = True
+                EXIT = True
             else:
                 msg = f"Falha ao reagendar. {date} {time}"
                 send_notification(msg)
