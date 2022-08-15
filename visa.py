@@ -380,7 +380,7 @@ if __name__ == "__main__":
                         msg = "Lista CASV vazia"
                         # EXIT = True
                     print_dates(casvDates)
-                    casvDate = get_available_date(dates, dateMax=date, isCASV=True)
+                    casvDate = get_available_date(casvDates, dateMax=date, isCASV=True)
                     print()
                     if casvDate:
                         print(f"Nova data CASV: {casvDate}")
