@@ -121,7 +121,8 @@ def get_driver():
         dr = webdriver.Remote(command_executor=HUB_ADDRESS, options=chrome_options)
     
     if HEROKU:
-        dr = webdriver.Chrome(executable_path=os.environ.get("CHROMEDRIVER_PATH"), service=Service(ChromeDriverManager().install()), options=chrome_options)
+        #executable_path=os.environ.get("CHROMEDRIVER_PATH"), 
+        dr = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     return dr
 
 driver = get_driver()
