@@ -221,7 +221,7 @@ def get_time_casv(dateListTime, date_consulate, time_consulate):
     data = json.loads(content)
     resultTimes = data.get("available_times")
     times = reversed(resultTimes)
-    if dateListTime != date_consulate and len(times) > 0:
+    if dateListTime != date_consulate and len(resultTimes) > 0:
         return resultTimes[-1]
         
     for time in times:
