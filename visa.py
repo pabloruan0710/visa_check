@@ -380,6 +380,7 @@ if __name__ == "__main__":
                     if not casvDates:
                         msg = "Lista CASV vazia"
                         # EXIT = True
+                    casvDates = reversed(casvDates)
                     print_dates(casvDates)
                     casvDate = get_available_date(casvDates, dateMax=date, isCASV=True)
                     print()
