@@ -412,7 +412,8 @@ if __name__ == "__main__":
                 print(f"Aguardando {minutos} min...")
                 time.sleep(RETRY_TIME)
 
-        except:
+        except Exception as er:
+            print(er)
             retry_count += 1
             time.sleep(EXCEPTION_TIME)
 
