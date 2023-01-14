@@ -9,6 +9,7 @@ import os
 from datetime import datetime, timedelta
 from random import randrange
 import logging
+import traceback
 
 import requests
 from selenium import webdriver
@@ -206,6 +207,8 @@ def get_date_casv(date_consulate, time_consulate):
     else:
         content = driver.find_element(By.TAG_NAME, 'pre').text
         date = json.loads(content)
+        print("All dates")
+        print_dates(date)
         return date
 
 def get_time_casv(dateListTime, date_consulate, time_consulate):
@@ -381,6 +384,7 @@ if __name__ == "__main__":
                         msg = "Lista CASV vazia"
                         # EXIT = True
                     casvDates = list(reversed(casvDates))
+                    print("Datas invertidas")
                     print_dates(casvDates)
                     casvDate = get_available_date(casvDates, dateMax=date, isCASV=True)
                     print()
