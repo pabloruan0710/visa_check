@@ -185,6 +185,8 @@ def get_date():
     else:
         content = driver.find_element(By.TAG_NAME, 'pre').text
         date = json.loads(content)
+        print("Todas datas")
+        print_dates(date)
         return date
 
 
