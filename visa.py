@@ -38,7 +38,7 @@ MY_SCHEDULE_DATE = os.environ.get("USVISA_MY_SCHEDULE_DATE") or config['USVISA']
 DAYS_FOR_ORGANIZE = os.environ.get("USVISA_DAYS_FOR_ORGANIZE") or config['USVISA']['DAYS_FOR_ORGANIZE']
 CASV_HOUR_DELAY = os.environ.get("USVISA_CASV_HOUR_DELAY") or int(config['USVISA']['CASV_HOUR_DELAY'] or 0) #quantidade em horas para chegar ao casv
 COUNTRY_CODE = os.environ.get("USVISA_COUNTRY_CODE") or config['USVISA']['COUNTRY_CODE']
-FACILITY_IDS = os.environ.get("USVISA_CONSULATE_IDS") or config['USVISA']['FACILITY_IDS']
+FACILITY_IDS = os.environ.get("USVISA_CONSULATE_ID") or config['USVISA']['FACILITY_ID']
 CASV_IDS = os.environ.get("USVISA_CASV_ID") or config['USVISA']['CASV_ID']
 
 SENDGRID_API_KEY = False
