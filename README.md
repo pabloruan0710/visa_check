@@ -1,5 +1,5 @@
 # visa_rescheduler
-US VISA (ais.usvisa-info.com) appointment re-scheduler - Colombian adaptation
+US VISA (ais.usvisa-info.com) appointment re-scheduler - Brasil adaptation
 
 ## Prerequisites
 - Having a US VISA appointment scheduled already
@@ -17,4 +17,10 @@ US VISA (ais.usvisa-info.com) appointment re-scheduler - Colombian adaptation
 - That's it!
 
 ## Acknowledgement
-Thanks to @yaojialyu for creating the initial script and to @cejaramillof for adapting it to Colombia!
+Thanks to @yaojialyu for creating the initial script and to @cejaramillof for adapting it to Brasil!
+
+; Brasila = 54 - Casv 58
+; São Paulo = 56
+; Rio de Janeiro = 55
+; Recife = 57
+; Porto Alegre = 128
