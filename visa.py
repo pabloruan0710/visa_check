@@ -383,7 +383,7 @@ def consultaDisponibilidade(consuladoId, casvId, retry_count, hasData):
     date = get_available_date(dates)
     if date is not None:
         print(f"Data disponível - {date}")
-        send_notification(f"Nova data disponível para consulado {consuladoId}")
+        send_notification(f"Nova data disponível para consulado {consuladoId} - {date}")
     if date:
         print(f"Nova data: {date}")
         timeConsulate = get_time(date, consuladoId)
