@@ -422,6 +422,7 @@ def consultaDisponibilidade(consuladoId, casvId, retry_count, hasData):
         hasData = False
     else:
         hasData = True
+    print("##################")
 
 if __name__ == "__main__":
     login()
