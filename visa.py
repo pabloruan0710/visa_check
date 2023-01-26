@@ -386,7 +386,7 @@ def consultaDisponibilidade(consuladoId, casvId, retry_count, hasData):
         send_notification(f"Nova data disponível para consulado {consuladoId}")
     if date:
         print(f"Nova data: {date}")
-        timeConsulate = get_time(date)
+        timeConsulate = get_time(date, consuladoId)
         print(f"Horario consulado - {timeConsulate}")
         if casvId and timeConsulate:
             print()
@@ -460,6 +460,7 @@ if __name__ == "__main__":
                 time.sleep(RETRY_TIME)
 
         except Exception as er:
+            send_notification("Erro no script: " + str(er))
             traceback.print_exc()
             retry_count += 1
             time.sleep(EXCEPTION_TIME)
