@@ -359,6 +359,8 @@ def get_available_date(dates, dateMax=MY_SCHEDULE_DATE, isCASV=False):
                 if(MY_CONDITION(month, day)):
                     last_seen = date
                     return date
+            else:
+                print(f"Date {date} - lastSeen {last_seen}")
 
 
 def push_notification(dates):
@@ -379,19 +381,21 @@ def consultaDisponibilidade(consuladoId, casvId, retry_count, hasData):
         # EXIT = True
     print_dates(dates)
     date = get_available_date(dates)
-    print()
+    print(f"Data disponível - {date}")
     if date:
         print(f"Nova data: {date}")
         timeConsulate = get_time(date)
+        print(f"Horario consulado - {timeConsulate}")
         if casvId and timeConsulate:
             print()
             print(f"Consultando nova data para CASV [{casvId}] com consulado em: {date} - {timeConsulate}")
             casvDates = get_date_casv(date, timeConsulate, consuladoId, casvId)[:5]
             if not casvDates:
                 msg = f"Lista CASV [{casvId}] vazia"
+                print(msg)
                 # EXIT = True
             casvDates = list(reversed(casvDates))
-            print("Datas invertidas")
+            print(f"Datas casv [{casvId}] invertidas")
             print_dates(casvDates)
             casvDate = get_available_date(casvDates, dateMax=date, isCASV=True)
             print()
@@ -432,6 +436,7 @@ if __name__ == "__main__":
             indexConsulado = 0
             hasData = False
             for consulado in _consulados:
+                last_seen = None
                 _idCasv = None
                 if indexConsulado < len(_casvs):
                     _idCasv = _casvs[indexConsulado]
