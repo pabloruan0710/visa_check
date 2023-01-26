@@ -404,7 +404,7 @@ def consultaDisponibilidade(consuladoId, casvId, retry_count, hasData):
                 print(f"Nova data CASV [{casvId}]: {casvDate}")
                 timeCasv = get_time_casv(casvDate, date, timeConsulate, consuladoId, casvId)
             else:
-                print(f"Data não disponível para CASV")
+                print(f"Data não disponível para CASV {casvId}")
             
             if casvDate and timeCasv:
                 reschedule(date, timeConsulate, casvDate, timeCasv, consuladoId, casvId)
