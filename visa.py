@@ -375,44 +375,47 @@ def consultaDisponibilidade(consuladoId, casvId, retry_count, hasData):
     print(f"Contagem de tentativas: {retry_count}")
     print()
 
-    dates = get_date(consuladoId)[:5]
-    if not dates:
-        msg = "Lista vazia"
-        # EXIT = True
-    print_dates(dates)
-    date = get_available_date(dates)
-    if date is not None:
-        print(f"Data disponível - {date}")
-        send_notification(f"Nova data disponível para consulado {consuladoId} - {date}")
-    if date:
-        print(f"Nova data: {date}")
-        timeConsulate = get_time(date, consuladoId)
-        print(f"Horario consulado - {timeConsulate}")
-        if casvId and timeConsulate:
-            print()
-            print(f"Consultando nova data para CASV [{casvId}] com consulado em: {date} - {timeConsulate}")
-            casvDates = get_date_casv(date, timeConsulate, consuladoId, casvId)[:5]
-            if not casvDates:
-                msg = f"Lista CASV [{casvId}] vazia"
-                print(msg)
-                # EXIT = True
-            casvDates = list(reversed(casvDates))
-            print(f"Datas casv [{casvId}] invertidas")
-            print_dates(casvDates)
-            casvDate = get_available_date(casvDates, dateMax=date, isCASV=True)
-            print()
-            if casvDate:
-                print(f"Nova data CASV [{casvId}]: {casvDate}")
-                timeCasv = get_time_casv(casvDate, date, timeConsulate, consuladoId, casvId)
-            else:
-                print(f"Data não disponível para CASV {casvId}")
-            
-            if casvDate and timeCasv:
-                reschedule(date, timeConsulate, casvDate, timeCasv, consuladoId, casvId)
+    datesLoop = get_date(consuladoId)[:5]
+    for dateloop in datesLoop:
+        dates = [dateloop]
+        print(f"Verificando data {dateloop}")
+        if not dates:
+            msg = "Lista vazia"
+            # EXIT = True
+        print_dates(dates)
+        date = get_available_date(dates)
+        if date is not None:
+            print(f"Data disponível - {date}")
+            send_notification(f"Nova data disponível para consulado {consuladoId} - {date}")
+        if date:
+            print(f"Nova data: {date}")
+            timeConsulate = get_time(date, consuladoId)
+            print(f"Horario consulado - {timeConsulate}")
+            if casvId and timeConsulate:
+                print()
+                print(f"Consultando nova data para CASV [{casvId}] com consulado em: {date} - {timeConsulate}")
+                casvDates = get_date_casv(date, timeConsulate, consuladoId, casvId)[:5]
+                if not casvDates:
+                    msg = f"Lista CASV [{casvId}] vazia"
+                    print(msg)
+                    # EXIT = True
+                casvDates = list(reversed(casvDates))
+                print(f"Datas casv [{casvId}] invertidas")
+                print_dates(casvDates)
+                casvDate = get_available_date(casvDates, dateMax=date, isCASV=True)
+                print()
+                if casvDate:
+                    print(f"Nova data CASV [{casvId}]: {casvDate}")
+                    timeCasv = get_time_casv(casvDate, date, timeConsulate, consuladoId, casvId)
+                else:
+                    print(f"Data não disponível para CASV {casvId}")
+                
+                if casvDate and timeCasv:
+                    reschedule(date, timeConsulate, casvDate, timeCasv, consuladoId, casvId)
+                else:
+                    reschedule(date, timeConsulate, None, None, consuladoId, casvId)
             else:
                 reschedule(date, timeConsulate, None, None, consuladoId, casvId)
-        else:
-            reschedule(date, timeConsulate, None, None, consuladoId, casvId)
 
     if(EXIT):
         print("------------------exit")
