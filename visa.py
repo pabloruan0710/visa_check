@@ -62,7 +62,7 @@ def MY_CONDITION(month, day): return True # No custom condition wanted for the n
 
 STEP_TIME = 0.5  # time between steps (interactions with forms): 0.5 seconds
 RETRY_TIME = 60*random.randint(10, 16)  # wait time between retries/checks for available dates: 10 minutes
-EXCEPTION_TIME = 60*30  # wait time when an exception occurs: 30 minutes
+EXCEPTION_TIME = 60*60  # wait time when an exception occurs: 30 minutes
 COOLDOWN_TIME = 60*60  # wait time when temporary banned (empty list): 60 minutes
 
 #DATE_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/days/{FACILITY_ID}.json?appointments[expedite]=false"
