@@ -421,7 +421,7 @@ def consultaDisponibilidade(consuladoId, casvId, retry_count, hasData):
         print("------------------exit")
         raise ValueError('------------------exit')
 
-    if not dates and not hasData:
+    if not datesLoop and not hasData:
         hasData = False
     else:
         hasData = True
