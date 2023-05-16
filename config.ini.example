@@ -1,0 +1,40 @@
+[USVISA]
+; Account and current appointment info from https://ais.usvisa-info.com
+USERNAME = seuEmail@email.com ;cadastrado no site ais.usvisa usado para consulta
+PASSWORD = 12345678 ;sua senha para acessar o site usvisa
+SCHEDULE_ID = 123456789 ;schedule de agendamento, como conseguir (clicar com botão direito após o login, sobre o votão continuar verde, e copiar link, nessa url você terá seu schedule id)
+MY_SCHEDULE_DATE = 2023-03-14 aqui está a data atual do seu agendamento, o bot irá pegar somente datas menores que essa data, então caso sua data de agendamento mude, é essencial alterar essa data novamente.
+DAYS_FOR_ORGANIZE = 2 ;Dias para se organizar. Ex: Hoje é 15/05/2022, o bot só irá agendar se tiver disponível a partir de 17/05/2022, pois soma-se 2 dias.
+CASV_HOUR_DELAY = 2 ;Tempo para deslocar entre o CASV e o consulado, caso não seja no mesmo lugar. se for no mesmo lugar, colocar 0;
+COUNTRY_CODE = pt-br
+; Brasila = 54 - Casv 58
+; São Paulo = 56 - 60
+; Rio de Janeiro = 55 - 59
+; Recife = 57
+; Porto Alegre = 128
+FACILITY_ID = 55,56 ;Colocar os ids dos consulados que deseja buscar, exemplo, Se surgir vaga em São Paulo ou Rio de Janeiro. 56,55. Lembrando que o CASV_ID deve respeitar a sequencia do FACILITY_ID
+; Caso exista casv, colocar em sequencia, exemplo
+; FACILITY_IDS=54,56,57
+; CASV_ID=58
+CASV_ID = 59,60
+
+[TELEGRAM]
+ENABLE = True
+BOT_TOKEN = xxxxxxxxxxx:AAFj1qSxbYgYDPhZB35x7_Sd62RFgg ; Caso queira receber os agendamentos via telegram, adicionar o bot_token aqui
+CHAT_ID = -xxxxxxxxxxxxxxx ; Chat id do telegram onde irá receber suas mensagens de agendamento.
+
+[CHROMEDRIVER]
+; Details for the script to control Chrome
+LOCAL_USE = True
+; Optional: HUB_ADDRESS is mandatory only when LOCAL_USE = False
+HUB_ADDRESS = http://localhost:9515/wd/hub
+
+[PUSHOVER]
+; Get push notifications via https://pushover.net/ (optional)
+PUSH_DEVICE = iPhone12Pro
+PUSH_TOKEN = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PUSH_USER = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+[SENDGRID]
+; Get email notifications via https://sendgrid.com/ (optional)
+SENDGRID_API_KEY = 
