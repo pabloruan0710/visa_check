@@ -30,6 +30,7 @@ Adicionar na sequência, python deve ficar no topo dos buildspacks:
 heroku/python
 https://github.com/heroku/heroku-buildpack-google-chrome
 ```
+- O heroku irá usar o `Procfile` para iniciar a aplicação, e caso dê algum erro, irá reniciar automáticamente.
 
 ## Acknowledgement
 Thanks to @yaojialyu for creating the initial script!
