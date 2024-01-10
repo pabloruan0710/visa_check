@@ -53,6 +53,7 @@ HEROKU = eval(os.environ.get("HEROKU") or 'False') or config['CHROMEDRIVER'].get
 REGEX_CONTINUE = "//a[contains(text(),'Continuar')]"
 
 ENABLE_RESCHEDULE = eval(os.environ.get("ENABLE_RESCHEDULE") or 'False') or True
+REAGENDAR = eval(os.environ.get("REAGENDAR") or 'False') or False
 TELEGRAM_ENABLE = eval(os.environ.get("TELEGRAM_ENABLE") or 'True') or config['TELEGRAM'].getboolean('ENABLE')
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or config['TELEGRAM']['BOT_TOKEN']
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID") or config['TELEGRAM']['CHAT_ID']
@@ -287,17 +288,23 @@ def reschedule(dateConsulate, timeConsulate, dateCasv, timeCasv, consuladoId, ca
             if casvId is not None:
                 print(f"CASV: {dateCasv} - {timeCasv}")
 
-            r = requests.post(APPOINTMENT_URL, headers=headers, data=data)
-            print("Retorno reagendamento!")
-            print(r)
-    
-            if(r.text.find('Você realizou o seu agendamento com sucesso') != -1):
-                msg = f"Reagendamento realizado! {date} {time}"
-                send_notification(msg)
-                EXIT = True
+            if REAGENDAR == True:
+                r = requests.post(APPOINTMENT_URL, headers=headers, data=data)
+                print("Retorno reagendamento!")
+                print(r)
+                if(r.text.find('Você realizou o seu agendamento com sucesso') != -1):
+                    msg = f"Reagendamento realizado! {date} {time}"
+                    send_notification(msg)
+                    EXIT = True
+                else:
+                    msg = f"Falha ao reagendar. {date} {time}"
+                    send_notification(msg)
             else:
-                msg = f"Falha ao reagendar. {date} {time}"
+                msg = f"Data disponível {date}, hora {time}"
                 send_notification(msg)
+                print("Reagendamento não realizado, pois REAGENDAR está desabilitado.")
+    
+            
     else:
         msg = f"{consuladoId} - Nova data disponível! {date} {time}"
         send_notification(msg)

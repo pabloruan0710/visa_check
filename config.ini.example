@@ -7,6 +7,7 @@ MY_SCHEDULE_DATE = 2023-03-14 aqui está a data atual do seu agendamento, o bot 
 DAYS_FOR_ORGANIZE = 2 ;Dias para se organizar. Ex: Hoje é 15/05/2022, o bot só irá agendar se tiver disponível a partir de 17/05/2022, pois soma-se 2 dias.
 CASV_HOUR_DELAY = 2 ;Tempo para deslocar entre o CASV e o consulado, caso não seja no mesmo lugar. se for no mesmo lugar, colocar 0;
 COUNTRY_CODE = pt-br
+REAGENDAR = true ; se false não irá agendar, mas irá notificar no telegram.
 ; Brasila = 54 - Casv 58
 ; São Paulo = 56 - 60
 ; Rio de Janeiro = 55 - 59
