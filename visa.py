@@ -52,12 +52,12 @@ HEROKU = eval(os.environ.get("HEROKU") or 'False') or config['CHROMEDRIVER'].get
 
 REGEX_CONTINUE = "//a[contains(text(),'Continuar')]"
 
-ENABLE_RESCHEDULE = config['USVISA'].getboolean('ENABLE_RESCHEDULE') or os.environ.get("ENABLE_RESCHEDULE", "false").lower() == "true"
-REAGENDAR = config['USVISA'].getboolean('REAGENDAR')  or os.environ.get("REAGENDAR", "false").lower() == "true"
+ENABLE_RESCHEDULE = config['USVISA'].getboolean('ENABLE_RESCHEDULE') if config['USVISA'] else os.environ.get("ENABLE_RESCHEDULE", "false").lower() == "true"
+REAGENDAR = config['USVISA'].getboolean('REAGENDAR') if config['USVISA'] else  os.environ.get("REAGENDAR", "false").lower() == "true"
 TELEGRAM_ENABLE = eval(os.environ.get("TELEGRAM_ENABLE") or 'True') or config['TELEGRAM'].getboolean('ENABLE')
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or config['TELEGRAM']['BOT_TOKEN']
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID") or config['TELEGRAM']['CHAT_ID']
-SEND_ERROR_MESSAGE = config['NOTIFICACAO'].getboolean('SEND_ERROR_MESSAGE') or os.environ.get("SEND_ERROR_MESSAGE", "false").lower() == "true"
+SEND_ERROR_MESSAGE = config['NOTIFICACAO'].getboolean('SEND_ERROR_MESSAGE') if config['NOTIFICACAO'] else os.environ.get("SEND_ERROR_MESSAGE", "false").lower() == "true"
 
 # def MY_CONDITION(month, day): return int(month) == 11 and int(day) >= 5
 def MY_CONDITION(month, day): return True # No custom condition wanted for the new scheduled date
