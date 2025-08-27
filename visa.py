@@ -6,10 +6,12 @@ import random
 import platform
 import configparser
 import os
+from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from random import randrange
 import logging
 import traceback
+load_dotenv()
 
 import requests
 from selenium import webdriver
@@ -31,34 +33,48 @@ logger = logging.getLogger(__name__)
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-USERNAME = os.environ.get("USVISA_USERNAME") or config['USVISA']['USERNAME']
-PASSWORD = os.environ.get("USVISA_PASS") or config['USVISA']['PASSWORD']
-SCHEDULE_ID = os.environ.get("USVISA_SCHEDULE_ID") or config['USVISA']['SCHEDULE_ID']
-MY_SCHEDULE_DATE = os.environ.get("USVISA_MY_SCHEDULE_DATE") or config['USVISA']['MY_SCHEDULE_DATE']
-DAYS_FOR_ORGANIZE = os.environ.get("USVISA_DAYS_FOR_ORGANIZE") or config['USVISA']['DAYS_FOR_ORGANIZE']
-CASV_HOUR_DELAY = os.environ.get("USVISA_CASV_HOUR_DELAY") or int(config['USVISA']['CASV_HOUR_DELAY'] or 0) #quantidade em horas para chegar ao casv
-COUNTRY_CODE = os.environ.get("USVISA_COUNTRY_CODE") or config['USVISA']['COUNTRY_CODE']
-FACILITY_IDS = os.environ.get("USVISA_CONSULATE_ID") or config['USVISA']['FACILITY_ID']
-CASV_IDS = os.environ.get("USVISA_CASV_ID") or config['USVISA']['CASV_ID']
+# Função para obter a variável do .env ou fallback para o arquivo .ini
+def get_env_or_ini(env_var, section, key, default=None):
+    # Primeiro tenta obter do arquivo .env
+    value = os.environ.get(env_var)
+    if value is not None:
+        return value
+
+    # Se não encontrou no .env, tenta pegar do arquivo .ini
+    if config.has_option(section, key):
+        return config.get(section, key)
+    
+    # Caso não encontre nem no .env nem no .ini, retorna o valor padrão
+    return default
+
+# Configuração das variáveis com fallback
+USERNAME = get_env_or_ini("USVISA_USERNAME", "USVISA", "USERNAME")
+PASSWORD = get_env_or_ini("USVISA_PASS", "USVISA", "PASSWORD")
+SCHEDULE_ID = get_env_or_ini("USVISA_SCHEDULE_ID", "USVISA", "SCHEDULE_ID")
+MY_SCHEDULE_DATE = get_env_or_ini("USVISA_MY_SCHEDULE_DATE", "USVISA", "MY_SCHEDULE_DATE")
+DAYS_FOR_ORGANIZE = get_env_or_ini("USVISA_DAYS_FOR_ORGANIZE", "USVISA", "DAYS_FOR_ORGANIZE")
+CASV_HOUR_DELAY = int(get_env_or_ini("USVISA_CASV_HOUR_DELAY", "USVISA", "CASV_HOUR_DELAY", 0))
+COUNTRY_CODE = get_env_or_ini("USVISA_COUNTRY_CODE", "USVISA", "COUNTRY_CODE")
+FACILITY_IDS = get_env_or_ini("USVISA_CONSULATE_ID", "USVISA", "FACILITY_ID")
+CASV_IDS = get_env_or_ini("USVISA_CASV_ID", "USVISA", "CASV_ID")
 
 SENDGRID_API_KEY = False
-PUSH_TOKEN = os.environ.get("PUSHOVER_TOKEN") or config['PUSHOVER']['PUSH_TOKEN']
-PUSH_USER = os.environ.get("PUSHOVER_USER") or config['PUSHOVER']['PUSH_USER']
-PUSH_DEVICE = os.environ.get("PUSHOVER_DEVICE") or config['PUSHOVER']['PUSH_DEVICE']
+PUSH_TOKEN = get_env_or_ini("PUSHOVER_TOKEN", "PUSHOVER", "PUSH_TOKEN")
+PUSH_USER = get_env_or_ini("PUSHOVER_USER", "PUSHOVER", "PUSH_USER")
+PUSH_DEVICE = get_env_or_ini("PUSHOVER_DEVICE", "PUSHOVER", "PUSH_DEVICE")
 
-LOCAL_USE = eval(os.environ.get("LOCAL_USE") or 'False') or config['CHROMEDRIVER'].getboolean('LOCAL_USE')
+LOCAL_USE = eval(get_env_or_ini("LOCAL_USE", "CHROMEDRIVER", "LOCAL_USE", 'False'))
 HUB_ADDRESS = "http://localhost:9515/wd/hub"
-HEROKU = eval(os.environ.get("HEROKU") or 'False') or config['CHROMEDRIVER'].getboolean('HEROKU')
+HEROKU = eval(get_env_or_ini("HEROKU", "CHROMEDRIVER", "HEROKU", 'False'))
+
+ENABLE_RESCHEDULE = config.getboolean('USVISA', 'ENABLE_RESCHEDULE', fallback=eval(get_env_or_ini("ENABLE_RESCHEDULE", "USVISA", "ENABLE_RESCHEDULE", "False")))
+REAGENDAR = config.getboolean('USVISA', 'REAGENDAR', fallback=eval(get_env_or_ini("REAGENDAR", "USVISA", "REAGENDAR", "False")))
+TELEGRAM_ENABLE = eval(get_env_or_ini("TELEGRAM_ENABLE", "TELEGRAM", "ENABLE", 'True'))
+TELEGRAM_BOT_TOKEN = get_env_or_ini("TELEGRAM_BOT_TOKEN", "TELEGRAM", "BOT_TOKEN")
+TELEGRAM_CHAT_ID = get_env_or_ini("TELEGRAM_CHAT_ID", "TELEGRAM", "CHAT_ID")
+SEND_ERROR_MESSAGE = config.getboolean('NOTIFICACAO', 'SEND_ERROR_MESSAGE', fallback=eval(get_env_or_ini("SEND_ERROR_MESSAGE", "NOTIFICACAO", "SEND_ERROR_MESSAGE", "False")))
 
 REGEX_CONTINUE = "//a[contains(text(),'Continuar')]"
-
-ENABLE_RESCHEDULE = config['USVISA'].getboolean('ENABLE_RESCHEDULE') if config['USVISA'] is not None else os.environ.get("ENABLE_RESCHEDULE", "false").lower() == "true"
-REAGENDAR = config['USVISA'].getboolean('REAGENDAR') if config['USVISA'] is not None else  os.environ.get("REAGENDAR", "false").lower() == "true"
-TELEGRAM_ENABLE = eval(os.environ.get("TELEGRAM_ENABLE") or 'True') or config['TELEGRAM'].getboolean('ENABLE')
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or config['TELEGRAM']['BOT_TOKEN']
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID") or config['TELEGRAM']['CHAT_ID']
-SEND_ERROR_MESSAGE = config['NOTIFICACAO'].getboolean('SEND_ERROR_MESSAGE') if config['NOTIFICACAO'] is not None else os.environ.get("SEND_ERROR_MESSAGE", "false").lower() == "true"
-
 # def MY_CONDITION(month, day): return int(month) == 11 and int(day) >= 5
 def MY_CONDITION(month, day): return True # No custom condition wanted for the new scheduled date
 
