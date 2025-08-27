@@ -72,7 +72,7 @@ REAGENDAR = config.getboolean('USVISA', 'REAGENDAR', fallback=eval(get_env_or_in
 TELEGRAM_ENABLE = eval(get_env_or_ini("TELEGRAM_ENABLE", "TELEGRAM", "ENABLE", 'True'))
 TELEGRAM_BOT_TOKEN = get_env_or_ini("TELEGRAM_BOT_TOKEN", "TELEGRAM", "BOT_TOKEN")
 TELEGRAM_CHAT_ID = get_env_or_ini("TELEGRAM_CHAT_ID", "TELEGRAM", "CHAT_ID")
-SEND_ERROR_MESSAGE = config.getboolean('NOTIFICACAO', 'SEND_ERROR_MESSAGE', fallback=eval(get_env_or_ini("SEND_ERROR_MESSAGE", "NOTIFICACAO", "SEND_ERROR_MESSAGE", "False")))
+SEND_ERROR_MESSAGE = config.getboolean('NOTIFICACAO', 'SEND_ERROR_MESSAGE', fallback=str(get_env_or_ini("SEND_ERROR_MESSAGE", "NOTIFICACAO", "SEND_ERROR_MESSAGE", "False")).lower() == "true")
 
 REGEX_CONTINUE = "//a[contains(text(),'Continuar')]"
 # def MY_CONDITION(month, day): return int(month) == 11 and int(day) >= 5
