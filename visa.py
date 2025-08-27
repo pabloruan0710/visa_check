@@ -158,8 +158,12 @@ def get_driver():
         dr = webdriver.Remote(command_executor=HUB_ADDRESS, options=chrome_options)
     
     if HEROKU:
-        #executable_path=os.environ.get("CHROMEDRIVER_PATH"), 
-        dr = webdriver.Chrome(service=Service(ChromeDriverManager(version="114.0.5735.90").install()), options=chrome_options)
+        executable_path=os.environ.get("CHROMEDRIVER_PATH")
+        if executable_path is None:
+            raise Exception("CHROMEDRIVER_PATH not defined in Env")
+        # Passar o caminho específico do ChromeDriver para o Service
+        service = Service(executable_path=executable_path)
+        dr = webdriver.Chrome(service=service, options=chrome_options)
     dr.execute_cdp_cmd("Network.enable", {})
     return dr
 
