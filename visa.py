@@ -159,7 +159,7 @@ def get_driver():
     
     if HEROKU:
         #executable_path=os.environ.get("CHROMEDRIVER_PATH"), 
-        dr = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        dr = webdriver.Chrome(service=Service(ChromeDriverManager(version="114.0.5735.90").install()), options=chrome_options)
     dr.execute_cdp_cmd("Network.enable", {})
     return dr
 
