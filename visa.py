@@ -148,22 +148,24 @@ def get_driver():
     # Habilitar a captura de logs de performance
     chrome_options.set_capability("goog:loggingPrefs", {"performance": "ALL"})  # Enable performance logs
     if HEROKU:
+        print("Running in Heroku")
         chrome_options.binary_location = os.environ.get("GOOGLE_CHROME_BIN")
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--no-sandbox")
-    if LOCAL_USE:
-        dr = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-    else:
-        dr = webdriver.Remote(command_executor=HUB_ADDRESS, options=chrome_options)
-    
-    if HEROKU:
+        
         executable_path=os.environ.get("CHROMEDRIVER_PATH")
         if executable_path is None:
             raise Exception("CHROMEDRIVER_PATH not defined in Env")
         # Passar o caminho específico do ChromeDriver para o Service
         service = Service(executable_path=executable_path)
         dr = webdriver.Chrome(service=service, options=chrome_options)
+    
+    elif LOCAL_USE:
+        dr = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    else:
+        dr = webdriver.Remote(command_executor=HUB_ADDRESS, options=chrome_options)
+
     dr.execute_cdp_cmd("Network.enable", {})
     return dr
 
