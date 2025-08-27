@@ -52,16 +52,17 @@ HEROKU = eval(os.environ.get("HEROKU") or 'False') or config['CHROMEDRIVER'].get
 
 REGEX_CONTINUE = "//a[contains(text(),'Continuar')]"
 
-ENABLE_RESCHEDULE = eval(os.environ.get("ENABLE_RESCHEDULE") or 'False') or True
-REAGENDAR = eval(os.environ.get("REAGENDAR") or 'False') or False
+ENABLE_RESCHEDULE = config['USVISA'].getboolean('ENABLE_RESCHEDULE') or os.environ.get("ENABLE_RESCHEDULE", "false").lower() == "true"
+REAGENDAR = config['USVISA'].getboolean('REAGENDAR')  or os.environ.get("REAGENDAR", "false").lower() == "true"
 TELEGRAM_ENABLE = eval(os.environ.get("TELEGRAM_ENABLE") or 'True') or config['TELEGRAM'].getboolean('ENABLE')
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or config['TELEGRAM']['BOT_TOKEN']
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID") or config['TELEGRAM']['CHAT_ID']
+SEND_ERROR_MESSAGE = config['NOTIFICACAO'].getboolean('SEND_ERROR_MESSAGE') or os.environ.get("SEND_ERROR_MESSAGE", "false").lower() == "true"
 
 # def MY_CONDITION(month, day): return int(month) == 11 and int(day) >= 5
 def MY_CONDITION(month, day): return True # No custom condition wanted for the new scheduled date
 
-STEP_TIME = 0.5  # time between steps (interactions with forms): 0.5 seconds
+STEP_TIME = 0.6  # time between steps (interactions with forms): 0.5 seconds
 RETRY_TIME = 60*random.randint(10, 16)  # wait time between retries/checks for available dates: 10 minutes
 EXCEPTION_TIME = 60*60  # wait time when an exception occurs: 30 minutes
 COOLDOWN_TIME = 60*60  # wait time when temporary banned (empty list): 60 minutes
@@ -73,6 +74,8 @@ COOLDOWN_TIME = 60*60  # wait time when temporary banned (empty list): 60 minute
 #CASV_TIME_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/times/{CASV_ID}.json?date=%s&consulate_id={FACILITY_ID}&consulate_date=%s&consulate_time=%s&appointments[expedite]=false"
 APPOINTMENT_URL = f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment"
 EXIT = False
+HEADERS = None
+COOKIES = None
 
 def DATE_URL(facilityId):
     return f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/days/{facilityId}.json?appointments[expedite]=false"
@@ -86,9 +89,11 @@ def CASV_URL(casvId, facilityId):
 def CASV_TIME_URL(casvId, facilityId):
     return f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/schedule/{SCHEDULE_ID}/appointment/times/{casvId}.json?date=%s&consulate_id={facilityId}&consulate_date=%s&consulate_time=%s&appointments[expedite]=false"
 
+def sleep(second):
+    time.sleep(second)
 
 def send_notification(msg):
-    print(f"Sending notification: {msg} token: {PUSH_TOKEN} - {PUSH_USER} - {PUSH_DEVICE}")
+    print(f"\n✅ Sending notification: {msg} token: {PUSH_TOKEN} - {PUSH_USER} - {PUSH_DEVICE}")
 
     if SENDGRID_API_KEY:
         message = Mail(
@@ -124,22 +129,27 @@ def send_notification(msg):
 
 def get_driver():
     chrome_options = webdriver.ChromeOptions()
+    # Habilitar a captura de logs de performance
+    chrome_options.set_capability("goog:loggingPrefs", {"performance": "ALL"})  # Enable performance logs
     if HEROKU:
         chrome_options.binary_location = os.environ.get("GOOGLE_CHROME_BIN")
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--no-sandbox")
     if LOCAL_USE:
-        dr = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+        dr = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     else:
         dr = webdriver.Remote(command_executor=HUB_ADDRESS, options=chrome_options)
     
     if HEROKU:
         #executable_path=os.environ.get("CHROMEDRIVER_PATH"), 
         dr = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    dr.execute_cdp_cmd("Network.enable", {})
     return dr
 
 driver = get_driver()
+def reloadDriver():
+    driver = get_driver()
 
 
 def login():
@@ -151,7 +161,7 @@ def login():
     time.sleep(STEP_TIME)
 
     print("Login start...")
-    href = driver.find_element(By.XPATH, '//*[@id="header"]/nav/div[2]/div[1]/ul/li[3]/a')
+    href = driver.find_element(By.XPATH, '//*[@id="header"]/nav/div[1]/div[1]/div[2]/div[1]/ul/li[3]/a')
     href.click()
     time.sleep(STEP_TIME)
     Wait(driver, 60).until(EC.presence_of_element_located((By.NAME, "commit")))
@@ -188,12 +198,27 @@ def do_login_action():
     Wait(driver, 60).until(
         EC.presence_of_element_located((By.XPATH, REGEX_CONTINUE)))
     print("\tlogin successful!")
+    
+def do_logout_action():
+    global HEADERS
+    global COOKIES
+    driver.get(f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv/users/sign_out")
+    time.sleep(random.randint(1, 3))
+    HEADERS = None
+    COOKIES = None
+    driver.close()
+    driver.quit()
 
 
 def get_date(consuladoId):
-    driver.get(DATE_URL(consuladoId))
+    sleep(2)
+    dates = make_request_with_headers(driver, DATE_URL(consuladoId))
+    print(dates)
     print(f"Consulta data para consulado [{consuladoId}]")
+    print_dates(dates)
+    return dates
     if not is_logged_in():
+        console.log('não está logado')
         login()
         return get_date(consuladoId)
     else:
@@ -201,20 +226,143 @@ def get_date(consuladoId):
         date = json.loads(content)
         return date
 
+# Função para capturar headers da requisição anterior
+def capture_request_headers(driver, target_url_part, timeout=10):
+    driver.execute_cdp_cmd('Network.enable', {})  # Ativar a interceptação de rede
+
+    start_time = time.time()
+    request_headers = None
+
+    while time.time() - start_time < timeout:
+        logs = driver.get_log("performance")  # Obtém os logs de performance
+
+        # Procura pela requisição que contém o target_url_part
+        for entry in logs:
+            log_msg = json.loads(entry["message"])
+            message = log_msg.get("message", {})
+
+            # Verifica se a requisição de rede foi enviada
+            if message.get("method") == "Network.requestWillBeSent":
+                request_url = message["params"]["request"]["url"]
+
+                if target_url_part in request_url:  # Verifica se é a URL de interesse
+                    print(f"Matched Request: {request_url}")
+                    request_headers = message["params"]["request"]["headers"]  # Captura os headers
+                    break
+
+        if request_headers:
+            break
+        time.sleep(0.5)  # Espera antes de verificar novamente
+
+    if request_headers:
+        return request_headers
+    else:
+        print("No matching request found within timeout.")
+        return None
+
+def get_response_body(driver, target_url_part, timeout=10):
+    """
+    Captures the response body of a specific request in Selenium using CDP.
+    Returns the parsed response as a Python object.
+
+    :param driver: Selenium WebDriver instance
+    :param target_url_part: Part of the URL to match (e.g., "/appointment/days/")
+    :param timeout: Maximum time (in seconds) to wait for the response
+    :return: Parsed response as a Python object, or None if not found
+    """
+    start_time = time.time()
+    matching_request_id = None
+    print(f"targetUrl - {target_url_part}")
+    while time.time() - start_time < timeout:
+        logs = driver.get_log("performance")
+
+        # Step 1: Find the request ID for the target request
+        for entry in logs:
+            log_msg = json.loads(entry["message"])
+            message = log_msg["message"]
+
+            if message["method"] == "Network.requestWillBeSent":
+                request_url = message["params"]["request"]["url"]
+
+                if target_url_part in request_url:
+                    print(f"Matched Request: {request_url}")
+                    matching_request_id = message["params"]["requestId"]
+                    break  # Stop once we find the target request
+
+        # Step 2: Fetch the response if requestId was found
+        if matching_request_id:
+            for entry in logs:
+                log_msg = json.loads(entry["message"])
+                message = log_msg["message"]
+
+                if message["method"] == "Network.responseReceived":
+                    if message["params"]["requestId"] == matching_request_id:
+                        # Get response body
+                        response = driver.execute_cdp_cmd("Network.getResponseBody", {"requestId": matching_request_id})
+                        body = response.get("body", None)
+
+                        # Step 3: Parse the response body to a Python object
+                        if body:
+                            try:
+                                # Decode the base64 encoded body (if it's base64 encoded)
+                                decoded_body = json.loads(body) if isinstance(body, str) else body
+                                return decoded_body  # Parsed Python object (e.g., dictionary)
+                            except json.JSONDecodeError:
+                                print("Failed to parse response body as JSON.")
+                                return None
+
+        time.sleep(0.5)  # Short delay before rechecking logs
+
+    print("No matching response found within timeout.")
+    return None
+
+
+# Função principal para realizar a requisição
+def make_request_with_headers(driver, target_url):
+    global HEADERS
+    if HEADERS is None:
+        HEADERS = capture_request_headers(driver, f'/appointment/days')
+    global COOKIES
+    if COOKIES is None:
+        COOKIES = driver.get_cookies()
+    cookie_dict = {cookie['name']: cookie['value'] for cookie in COOKIES}
+    print(f"Making request {target_url}")
+    response = requests.get(target_url, cookies=cookie_dict,  headers=HEADERS)
+    print(f"Headers", HEADERS)
+    if response.status_code == 200:
+        try:
+            return response.json() 
+        except ValueError:
+            print("Erro ao parsear a resposta como JSON")
+            return None
+    else:
+        print(f"Falha na requisição: {response.status_code}")
+        print(response)
+        return None
+
 
 def get_time(date, consuladoId):
+    sleep(2)
     time_url = TIME_URL(consuladoId) % date
-    driver.get(time_url)
-    content = driver.find_element(By.TAG_NAME, 'pre').text
-    data = json.loads(content)
+    data = make_request_with_headers(driver, time_url)
+    print(f"Times {consuladoId} - {data}")
+    if data is None:
+        return None
     time = data.get("available_times")[-1]
     print(f"Got time successfully! {date} {time}")
     return time
 
 ## CASV
 def get_date_casv(date_consulate, time_consulate, consuladoId, casvId):
+    sleep(2)
     url = CASV_URL(casvId, consuladoId) % (date_consulate, time_consulate)
-    driver.get(url)
+    dates = make_request_with_headers(driver, url)
+    print(f"Dates cavs {casvId}, dates f{dates}")
+    if dates is None:
+        return []
+    print_dates(dates)
+    return dates
+
     if not is_logged_in():
         login()
         return get_date_casv(date_consulate, time_consulate, consuladoId, casvId)
@@ -234,9 +382,8 @@ def get_time_casv(dateListTime, date_consulate, time_consulate, consuladoId, cas
         return newTime < consulateTime
 
     time_url = CASV_TIME_URL(casvId, consuladoId) % (dateListTime, date_consulate, time_consulate)
-    driver.get(time_url)
-    content = driver.find_element(By.TAG_NAME, 'pre').text
-    data = json.loads(content)
+    data = make_request_with_headers(driver, time_url)
+    print(f"Horarios casv {casvId} - {data}")
     resultTimes = data.get("available_times")
     times = reversed(resultTimes)
     if dateListTime != date_consulate and len(resultTimes) > 0:
@@ -272,12 +419,12 @@ def reschedule(dateConsulate, timeConsulate, dateCasv, timeCasv, consuladoId, ca
             data["appointments[asc_appointment][facility_id]"] = casvId
             data["appointments[asc_appointment][date]"] = dateCasv
             data["appointments[asc_appointment][time]"] = timeCasv
-
-        headers = {
-            "User-Agent": driver.execute_script("return navigator.userAgent;"),
-            "Referer": APPOINTMENT_URL,
-            "Cookie": "_yatri_session=" + driver.get_cookie("_yatri_session")["value"]
-        }
+        global COOKIES
+        if COOKIES is None:
+            COOKIES = driver.getCookies()
+        cookie_dict = {cookie['name']: cookie['value'] for cookie in COOKIES}
+        
+        headers = HEADERS
 
         if casvId is not None and (not dateCasv or not timeCasv):
             msg = f"Data para consulado disponível, porém data não encontrada para CASV! {date} {time}"
@@ -289,7 +436,7 @@ def reschedule(dateConsulate, timeConsulate, dateCasv, timeCasv, consuladoId, ca
                 print(f"CASV: {dateCasv} - {timeCasv}")
 
             if REAGENDAR == True:
-                r = requests.post(APPOINTMENT_URL, headers=headers, data=data)
+                r = requests.post(APPOINTMENT_URL, cookies=cookie_dict, headers=headers, data=data)
                 print("Retorno reagendamento!")
                 print(r)
                 if(r.text.find('Você realizou o seu agendamento com sucesso') != -1):
@@ -307,19 +454,24 @@ def reschedule(dateConsulate, timeConsulate, dateCasv, timeCasv, consuladoId, ca
             
     else:
         msg = f"{consuladoId} - Nova data disponível! {date} {time}"
+        if dateCasv and timeCasv:
+             msg = f"{consuladoId} - Nova data disponível! CASV {dateCasv} {timeCasv}, Consulado {date} {time}"
         send_notification(msg)
         #EXIT = True
 
 
 def is_logged_in():
     content = driver.page_source
-    if(content.find("error") != -1):
-        return False
-    return True
+    if(content.find(SCHEDULE_ID) >= 0):
+        return True
+    return False
 
 
 def print_dates(dates):
     print("Datas disponíveis:")
+    if dates is None:
+        print("None")
+        return
     for d in dates:
         print("%s \t business_day: %s" % (d.get('date'), d.get('business_day')))
     print()
@@ -382,7 +534,11 @@ def consultaDisponibilidade(consuladoId, casvId, retry_count, hasData):
     print(f"Contagem de tentativas: {retry_count}")
     print()
 
-    datesLoop = get_date(consuladoId)[:5]
+    datesLoop = get_date(consuladoId)
+    if datesLoop is None:
+        datesLoop = []
+    datesLoop = datesLoop[:5]
+    
     for dateloop in datesLoop:
         dates = [dateloop]
         print(f"Verificando data {dateloop}")
@@ -401,12 +557,13 @@ def consultaDisponibilidade(consuladoId, casvId, retry_count, hasData):
             if casvId and timeConsulate:
                 print()
                 print(f"Consultando nova data para CASV [{casvId}] com consulado em: {date} - {timeConsulate}")
-                casvDates = get_date_casv(date, timeConsulate, consuladoId, casvId)[:5]
+                
+                casvDates = get_date_casv(date, timeConsulate, consuladoId, casvId)
                 if not casvDates:
                     msg = f"Lista CASV [{casvId}] vazia"
                     print(msg)
                     # EXIT = True
-                casvDates = list(reversed(casvDates))
+                casvDates = list(reversed(casvDates))[:5]
                 print(f"Datas casv [{casvId}] invertidas")
                 print_dates(casvDates)
                 casvDate = get_available_date(casvDates, dateMax=date, isCASV=True)
@@ -419,10 +576,13 @@ def consultaDisponibilidade(consuladoId, casvId, retry_count, hasData):
                 
                 if casvDate and timeCasv:
                     reschedule(date, timeConsulate, casvDate, timeCasv, consuladoId, casvId)
+                    break
                 else:
                     reschedule(date, timeConsulate, None, None, consuladoId, casvId)
+                    break
             else:
                 reschedule(date, timeConsulate, None, None, consuladoId, casvId)
+                break
 
     if(EXIT):
         print("------------------exit")
@@ -435,12 +595,14 @@ def consultaDisponibilidade(consuladoId, casvId, retry_count, hasData):
     print("##################\n")
 
 if __name__ == "__main__":
-    login()
     retry_count = 0
     while 1:
         if retry_count > 6:
             break
         try:
+            reloadDriver()
+            login()
+            driver.get(APPOINTMENT_URL)
             _consulados = FACILITY_IDS.split(",")
             _casvs = []
             if CASV_IDS is not None:
@@ -462,18 +624,23 @@ if __name__ == "__main__":
                 print(f"{msg}")
                 #EXIT = True
                 print(f"Aguardando próximo loop {str(COOLDOWN_TIME/60)} minutos")
+                do_logout_action()
                 time.sleep(COOLDOWN_TIME)
             else:
                 RETRY_TIME = 60*random.randint(9, 16) 
                 minutos = RETRY_TIME/60
                 print(f"Aguardando {minutos} min...")
+                do_logout_action()
                 time.sleep(RETRY_TIME)
 
         except Exception as er:
-            send_notification("Erro no script: " + str(er))
+            if SEND_ERROR_MESSAGE:
+                send_notification("Erro no script: " + str(er))
             traceback.print_exc()
+            do_logout_action()
             retry_count += 1
             time.sleep(EXCEPTION_TIME)
 
     if(not EXIT):
-        send_notification("HELP! Crashed.")
+        if SEND_ERROR_MESSAGE:
+            send_notification("HELP! Crashed.")
