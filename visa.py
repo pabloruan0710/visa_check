@@ -177,6 +177,8 @@ def reloadDriver():
 def login():
     # Bypass reCAPTCHA
     driver.get(f"https://ais.usvisa-info.com/{COUNTRY_CODE}/niv")
+    if HEROKU:
+        print(driver.page_source)
     time.sleep(STEP_TIME)
     a = driver.find_element(By.XPATH, '//a[@class="down-arrow bounce"]')
     a.click()
